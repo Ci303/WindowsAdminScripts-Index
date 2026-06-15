@@ -33,3 +33,25 @@ Recommended usage with commit (and optional push):
 ```
 
 Last updated: 2026-06-16 00:02:58 +01:00
+
+## Quick start
+
+Run each script directly:
+
+```powershell
+cd "C:\Users\noswi\Desktop\Scripts\Find-UnresolvedTrayIcons"
+.\Find-UnresolvedTrayIcons.ps1
+
+cd "C:\Users\noswi\Desktop\Scripts\Invoke-TrayIconCleanup"
+.\Invoke-TrayIconCleanup.ps1
+
+cd "C:\Users\noswi\Desktop\Scripts\Invoke-WindowsCleanup"
+.\Invoke-WindowsCleanup.ps1
+```
+
+For a full Windows cleanup run without native Disk Cleanup:
+
+```powershell
+cd "C:\Users\noswi\Desktop\Scripts\Invoke-WindowsCleanup"
+.\Invoke-WindowsCleanup.ps1 -SkipCleanMgr
+```
