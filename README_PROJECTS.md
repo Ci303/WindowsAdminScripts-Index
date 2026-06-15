@@ -4,54 +4,16 @@ Central index for related utility repositories.
 
 | Repository | URL | Commit | Date | Commit message |
 |---|---|---:|---|---|
-| [Find-UnresolvedTrayIcons](https://github.com/Ci303/Find-UnresolvedTrayIcons) | https://github.com/Ci303/Find-UnresolvedTrayIcons | `ab7ec1b` | 2026-06-15 | Add repository policy for PR-based contribution flow |
-| [Invoke-TrayIconCleanup](https://github.com/Ci303/Invoke-TrayIconCleanup) | https://github.com/Ci303/Invoke-TrayIconCleanup | `349e57d` | 2026-06-15 | Add repository policy for PR-based contribution flow |
-| [Invoke-WindowsCleanup](https://github.com/Ci303/Invoke-WindowsCleanup) | https://github.com/Ci303/Invoke-WindowsCleanup | `8e19748` | 2026-06-15 | Add repository policy for PR-based contribution flow |
+| [Find-UnresolvedTrayIcons](https://github.com/Ci303/Find-UnresolvedTrayIcons.git) | https://github.com/Ci303/Find-UnresolvedTrayIcons.git | ``ab7ec1b`` | 2026-06-15 | Add repository policy for PR-based contribution flow |
+| [Invoke-TrayIconCleanup](https://github.com/Ci303/Invoke-TrayIconCleanup.git) | https://github.com/Ci303/Invoke-TrayIconCleanup.git | ``349e57d`` | 2026-06-15 | Add repository policy for PR-based contribution flow |
+| [Invoke-WindowsCleanup](https://github.com/Ci303/Invoke-WindowsCleanup.git) | https://github.com/Ci303/Invoke-WindowsCleanup.git | ``8e19748`` | 2026-06-15 | Add repository policy for PR-based contribution flow |
 
 ## Maintenance
 
 ```powershell
-git -C "C:/Users/noswi/Desktop/Scripts/Find-UnresolvedTrayIcons" log -1 --oneline
-git -C "C:/Users/noswi/Desktop/Scripts/Invoke-TrayIconCleanup" log -1 --oneline
-git -C "C:/Users/noswi/Desktop/Scripts/Invoke-WindowsCleanup" log -1 --oneline
+git -C "C:\Users\noswi\Desktop\Scripts\Find-UnresolvedTrayIcons" log -1 --oneline
+git -C "C:\Users\noswi\Desktop\Scripts\Invoke-TrayIconCleanup" log -1 --oneline
+git -C "C:\Users\noswi\Desktop\Scripts\Invoke-WindowsCleanup" log -1 --oneline
 ```
 
-## Maintenance helper
-
-Use the tracked helper script to refresh the index from the workspace:
-
-```powershell
-cd "C:\Users\noswi\Desktop\Scripts\WindowsAdminScripts-Index"
-.\refresh-index.ps1
-```
-
-Recommended usage with commit (and optional push):
-
-```powershell
-.\refresh-index.ps1 -Commit
-.\refresh-index.ps1 -Commit -Push
-```
-
-Last updated: 2026-06-16 00:02:58 +01:00
-
-## Quick start
-
-Run each script directly:
-
-```powershell
-cd "C:\Users\noswi\Desktop\Scripts\Find-UnresolvedTrayIcons"
-.\Find-UnresolvedTrayIcons.ps1
-
-cd "C:\Users\noswi\Desktop\Scripts\Invoke-TrayIconCleanup"
-.\Invoke-TrayIconCleanup.ps1
-
-cd "C:\Users\noswi\Desktop\Scripts\Invoke-WindowsCleanup"
-.\Invoke-WindowsCleanup.ps1
-```
-
-For a full Windows cleanup run without native Disk Cleanup:
-
-```powershell
-cd "C:\Users\noswi\Desktop\Scripts\Invoke-WindowsCleanup"
-.\Invoke-WindowsCleanup.ps1 -SkipCleanMgr
-```
+Last updated: 2026-06-16 00:06:39 +01:00
