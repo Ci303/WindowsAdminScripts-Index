@@ -1,52 +1,37 @@
 param(
-    [string]$Workspace = "C:\Users\noswi\Desktop\Scripts",
-    [string]$IndexRepo = "WindowsAdminScripts-Index",
-    [string]$HubFileName = "README_PROJECTS.md",
+    [string]$Workspace = 'C:\Users\noswi\Desktop\Scripts',
+    [string]$IndexRepo = 'WindowsAdminScripts-Index',
+    [string]$HubFileName = 'README_PROJECTS.md',
     [switch]$PullIndex,
     [switch]$Commit,
     [switch]$Push
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
 
 function Assert-Path {
     param(
         [string]$Path,
         [string]$Label
     )
-
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
         throw "$Label not found: $Path"
     }
 }
 
 function Assert-RequiredTool {
-    param(
-        [string]$Name
-    )
-
+    param([string]$Name)
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "Required tool '$Name' was not found in PATH. Install it and retry."
+        throw "Required tool '$Name' was not found in PATH."
     }
 }
 
 function Show-Remediation {
     param(
         [string]$RepoName,
-        [string]$RepoPath
+        [string]$Workspace
     )
-
-    return "Recreate `$RepoName` under `$RepoPath` (`git clone https://github.com/Ci303/$RepoName`)."
-}
-
-function Escape-MarkdownTableCell {
-    param([string]$Value)
-
-    if ($null -eq $Value) {
-        return ""
-    }
-
-    return ($Value -replace '\|', '\\|')
+    return "Recreate '$RepoName' under '$Workspace' or update -Workspace to the correct location."
 }
 
 function Get-RepoMetadata {
@@ -55,26 +40,21 @@ function Get-RepoMetadata {
         [string]$RepoName
     )
 
-    $gitPath = Join-Path $RepoPath ".git"
-    if (-not (Test-Path -LiteralPath $gitPath)) {
+    if (-not (Test-Path -LiteralPath (Join-Path $RepoPath '.git') -PathType Container)) {
         throw "Not a git repository: $RepoPath"
     }
 
-    $url = (git -C $RepoPath config --get remote.origin.url) 2>$null
+    $url = git -C $RepoPath config --get remote.origin.url 2>$null
     if ([string]::IsNullOrWhiteSpace($url)) {
         $url = "https://github.com/Ci303/$RepoName"
     }
 
-    $commit = (git -C $RepoPath rev-parse --short HEAD)
-    $date = (git -C $RepoPath log -1 --date=short --pretty=format:"%cd")
-    $message = (git -C $RepoPath log -1 --pretty=format:"%s")
-
     [PSCustomObject]@{
         Name    = $RepoName
         Url     = $url
-        Commit  = $commit
-        Date    = $date
-        Message = $message
+        Commit  = (git -C $RepoPath rev-parse --short HEAD)
+        Date    = (git -C $RepoPath log -1 --date=short --pretty=format:'%cd')
+        Message = (git -C $RepoPath log -1 --pretty=format:'%s')
     }
 }
 
@@ -85,38 +65,30 @@ function Validate-RequiredRepositories {
     )
 
     $errors = @()
-    $details = @()
+    $remedy = @()
 
     foreach ($name in $Names) {
         $repoPath = Join-Path $Workspace $name
         if (-not (Test-Path -LiteralPath $repoPath -PathType Container)) {
-            $errors += "Repository folder missing: $repoPath"
-            $details += Show-Remediation -RepoName $name -RepoPath $Workspace
+            $errors += "Missing repository folder: $repoPath"
+            $remedy += Show-Remediation -RepoName $name -Workspace $Workspace
             continue
         }
-
         if (-not (Test-Path -LiteralPath (Join-Path $repoPath '.git') -PathType Container)) {
-            $errors += "Not a git repo (missing .git): $repoPath"
-            $details += "Re-run setup for '$name' as a git clone, or initialise git in: $repoPath"
+            $errors += "Missing .git in: $repoPath"
+            $remedy += "Re-run setup or clone '$name' as a git repository into '$repoPath'."
         }
     }
 
-    if ($errors.Count -eq 0) {
-        return
+    if ($errors.Count -gt 0) {
+        $msg = @()
+        $msg += 'Preflight failed for repository list:'
+        foreach ($e in $errors) { $msg += (' - ' + $e) }
+        $msg += ''
+        $msg += 'Remediation:'
+        foreach ($r in $remedy) { $msg += (' - ' + $r) }
+        throw ($msg -join [Environment]::NewLine)
     }
-
-    $message = @()
-    $message += "Preflight failed for repository input list:"
-    foreach ($item in $errors) {
-        $message += " - $item"
-    }
-    $message += ""
-    $message += "Remediation:"
-    foreach ($item in $details) {
-        $message += " - $item"
-    }
-
-    throw ($message -join "`n")
 }
 
 function Update-And-Guard-IndexRepo {
@@ -127,106 +99,103 @@ function Update-And-Guard-IndexRepo {
 
     Set-Location $RepoPath
 
-    $status = git status --porcelain
-    if (-not [string]::IsNullOrWhiteSpace($status)) {
-        throw "$RepoName has uncommitted changes. Commit, stash or discard local changes before refreshing the index."
+    if (-not [string]::IsNullOrWhiteSpace((git status --porcelain))) {
+        throw "$RepoName has uncommitted changes. Commit, stash, or discard them before refreshing."
     }
 
     git fetch origin
+    $upstream = git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null
 
-    $upstream = (git rev-parse --abbrev-ref --symbolic-full-name "@{u}") 2>$null
     if ([string]::IsNullOrWhiteSpace($upstream)) {
-        Write-Warning "$RepoName has no configured upstream. Skipping stale-check."
+        Write-Warning "$RepoName has no upstream configured. Skipping stale check."
         return
     }
 
-    $local = (git rev-parse HEAD)
-    $remote = (git rev-parse "$upstream")
+    $local = git rev-parse HEAD
+    $remote = git rev-parse $upstream
 
     if ($local -ne $remote) {
         if ($PullIndex.IsPresent) {
-            Write-Host "Index repository is behind upstream. Pulling updates for $RepoName..."
+            Write-Host "$RepoName is behind upstream. Pulling updates..."
             git pull --ff-only
         }
         else {
-            throw "$RepoName is behind upstream. Rerun with -PullIndex (or run git pull) before refreshing."
+            throw "$RepoName is behind upstream. Rerun with -PullIndex or run git pull first."
         }
     }
 }
 
+function Escape-MarkdownCell {
+    param([string]$Value)
+    return ($Value -replace '\|', '\\|')
+}
+
 try {
     Assert-RequiredTool -Name git
-    Assert-Path -Path $Workspace -Label "Workspace"
+    Assert-Path -Path $Workspace -Label 'Workspace'
+
     Validate-RequiredRepositories -Workspace $Workspace -Names @(
-        "Find-UnresolvedTrayIcons",
-        "Invoke-TrayIconCleanup",
-        "Invoke-WindowsCleanup",
+        'Find-UnresolvedTrayIcons',
+        'Invoke-TrayIconCleanup',
+        'Invoke-WindowsCleanup',
         $IndexRepo
     )
 
     $repoList = @(
-        "Find-UnresolvedTrayIcons",
-        "Invoke-TrayIconCleanup",
-        "Invoke-WindowsCleanup"
+        'Find-UnresolvedTrayIcons',
+        'Invoke-TrayIconCleanup',
+        'Invoke-WindowsCleanup'
     )
 
     $entries = foreach ($repo in $repoList) {
-        $repoPath = Join-Path $Workspace $repo
-        Assert-Path -Path $repoPath -Label "Repository folder"
-        Get-RepoMetadata -RepoPath $repoPath -RepoName $repo
+        Get-RepoMetadata -RepoPath (Join-Path $Workspace $repo) -RepoName $repo
     }
 
     $indexRepoPath = Join-Path $Workspace $IndexRepo
-    Assert-Path -Path $indexRepoPath -Label "Index repository folder"
+    Assert-Path -Path $indexRepoPath -Label 'Index repository folder'
     Update-And-Guard-IndexRepo -RepoPath $indexRepoPath -RepoName $IndexRepo
 
     $indexPath = Join-Path $indexRepoPath $HubFileName
 
-    $lines = @(
-        "# Windows Admin Scripts Index",
-        "",
-        "Central index for related utility repositories.",
-        "",
-        "| Repository | URL | Commit | Date | Commit message |",
-        "|---|---|---:|---|---|"
-    )
+    $lines = @()
+    $lines += '# Windows Admin Scripts Index'
+    $lines += ''
+    $lines += 'Central index for related utility repositories.'
+    $lines += ''
+    $lines += '| Repository | URL | Commit | Date | Commit message |'
+    $lines += '|---|---|---:|---|---|'
 
     foreach ($entry in $entries) {
-        $escapedMessage = Escape-MarkdownTableCell -Value $entry.Message
-        $lines += "| [$($entry.Name)]($($entry.Url)) | $($entry.Url) | ``$($entry.Commit)`` | $($entry.Date) | $escapedMessage |"
+        $msg = Escape-MarkdownCell -Value $entry.Message
+        $lines += ('| [{0}]({1}) | {1} | ``{2}`` | {3} | {4} |' -f $entry.Name, $entry.Url, $entry.Commit, $entry.Date, $msg)
     }
 
-    $lines += ""
-    $lines += "## Maintenance"
-    $lines += ""
-    $lines += "```powershell"
+    $lines += ''
+    $lines += '## Maintenance'
+    $lines += ''
+    $lines += '```powershell'
     foreach ($entry in $entries) {
-        $lines += "git -C `"$Workspace\$($entry.Name)`" log -1 --oneline"
+        $lines += ('git -C "{0}\{1}" log -1 --oneline' -f $Workspace, $entry.Name)
     }
-    $lines += "```"
-    $lines += ""
-    $lines += "Last updated: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss K'))"
+    $lines += '```'
 
-    Set-Content -Path $indexPath -Value ($lines -join "`r`n") -Encoding UTF8
+    $lines += ''
+    $lines += ('Last updated: {0}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
+
+    Set-Content -Path $indexPath -Value $lines -Encoding UTF8
     Write-Host "Updated: $indexPath"
 
     if ($Commit.IsPresent) {
         Set-Location $indexRepoPath
         git add $HubFileName
 
-        $status = git status --porcelain
-        if ([string]::IsNullOrWhiteSpace($status)) {
-            Write-Host "No changes to commit."
+        if (-not [string]::IsNullOrWhiteSpace((git status --porcelain))) {
+            git commit -m 'Refresh repository index'
+            Write-Host 'Committed index update.'
+            if ($Push.IsPresent) { git push; Write-Host 'Pushed index update.' }
         }
         else {
-            $message = "Refresh repository index"
-            git commit -m $message
-            Write-Host "Committed index update."
-
-            if ($Push.IsPresent) {
-                git push
-                Write-Host "Pushed index update."
-            }
+            Write-Host 'No changes to commit.'
         }
     }
 }
