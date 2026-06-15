@@ -16,4 +16,20 @@ git -C "C:/Users/noswi/Desktop/Scripts/Invoke-TrayIconCleanup" log -1 --oneline
 git -C "C:/Users/noswi/Desktop/Scripts/Invoke-WindowsCleanup" log -1 --oneline
 ```
 
+## Maintenance helper
+
+Use the tracked helper script to refresh the index from the workspace:
+
+```powershell
+cd "C:\Users\noswi\Desktop\Scripts\WindowsAdminScripts-Index"
+.\refresh-index.ps1
+```
+
+Recommended usage with commit (and optional push):
+
+```powershell
+.\refresh-index.ps1 -Commit
+.\refresh-index.ps1 -Commit -Push
+```
+
 Last updated: 2026-06-16 00:02:58 +01:00
