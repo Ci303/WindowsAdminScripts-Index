@@ -49,9 +49,19 @@ function Get-RepoMetadata {
         $url = "https://github.com/Ci303/$RepoName"
     }
 
+    $displayUrl = $url
+    if ($displayUrl -like 'git@*:*') {
+        if ($displayUrl -match '^git@([^:]+):(.+?)\.git$') {
+            $displayUrl = ('https://{0}/{1}' -f $matches[1], $matches[2])
+        }
+    }
+    else {
+        $displayUrl = $displayUrl -replace '\.git$', ''
+    }
+
     [PSCustomObject]@{
         Name    = $RepoName
-        Url     = $url
+        Url     = $displayUrl
         Commit  = (git -C $RepoPath rev-parse --short HEAD)
         Date    = (git -C $RepoPath log -1 --date=short --pretty=format:'%cd')
         Message = (git -C $RepoPath log -1 --pretty=format:'%s')
@@ -171,12 +181,35 @@ try {
     }
 
     $lines += ''
-    $lines += '## Maintenance'
+    $lines += '## Maintenance helper'
     $lines += ''
     $lines += '```powershell'
     foreach ($entry in $entries) {
         $lines += ('git -C "{0}\{1}" log -1 --oneline' -f $Workspace, $entry.Name)
     }
+    $lines += '```
+'
+    $lines += '### Regenerate index'
+    $lines += ''
+    $lines += '```powershell'
+    $lines += 'Set-Location "C:\Users\noswi\Desktop\Scripts\WindowsAdminScripts-Index"'
+    $lines += '.\refresh-index.ps1'
+    $lines += '.\refresh-index.ps1 -Commit'
+    $lines += '.\refresh-index.ps1 -Commit -Push'
+    $lines += '```'
+
+    $lines += ''
+    $lines += '## Quick start'
+    $lines += ''
+    $lines += '```powershell'
+    $lines += 'Set-Location "C:\Users\noswi\Desktop\Scripts\Find-UnresolvedTrayIcons"'
+    $lines += '.\Find-UnresolvedTrayIcons.ps1'
+    $lines += ''
+    $lines += 'Set-Location "C:\Users\noswi\Desktop\Scripts\Invoke-TrayIconCleanup"'
+    $lines += '.\Invoke-TrayIconCleanup.ps1'
+    $lines += ''
+    $lines += 'Set-Location "C:\Users\noswi\Desktop\Scripts\Invoke-WindowsCleanup"'
+    $lines += '.\Invoke-WindowsCleanup.ps1 -SkipCleanMgr'
     $lines += '```'
 
     $lines += ''
